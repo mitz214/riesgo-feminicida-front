@@ -7,181 +7,84 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header">
-    <h1>Sistema de valoración de riesgo feminicida</h1>
-    <p class="subtitle">
-      Registro y análisis inicial de casos a partir de la descripción de los hechos.
-    </p>
-  </header>
 
-  <main class="layout">
-    <!-- FORMULARIO -->
-    <section class="card">
-      <h2>Registro del caso</h2>
-      <form id="case-form" autocomplete="off">
-        <div class="grid-2">
-          <div class="form-group">
-            <label for="victim_name">Nombre de la víctima (opcional)</label>
-            <input type="text" id="victim_name" name="victim_name" />
-          </div>
+<header class="app-header">
+  <h1>Sistema de valoración de riesgo feminicida</h1>
+  <p class="subtitle">
+    Registro y análisis inicial de casos a partir de la descripción de los hechos.
+  </p>
+</header>
 
-          <div class="form-group">
-            <label for="victim_age">Edad (opcional)</label>
-            <input type="number" id="victim_age" name="victim_age" min="0" />
-          </div>
-        </div>
+<main class="layout">
 
-        <div class="grid-2">
-          <div class="form-group">
-            <label for="municipality">Municipio (opcional)</label>
-            <input type="text" id="municipality" name="municipality" />
-          </div>
+  <!-- FORMULARIO -->
+  <section class="card">
+    <h2>Registro del caso</h2>
 
-          <div class="form-group">
-            <label for="aggressor_relation">Relación con el agresor (opcional)</label>
-            <select id="aggressor_relation" name="aggressor_relation">
-              <option value="">Selecciona una opción</option>
-              <option value="pareja">Pareja</option>
-              <option value="ex_pareja">Ex pareja</option>
-              <option value="familiar">Familiar</option>
-              <option value="conocido">Conocido</option>
-              <option value="desconocido">Desconocido</option>
-              <option value="otro">Otro</option>
-            </select>
-          </div>
-        </div>
-
+    <form id="case-form" autocomplete="off">
+      <div class="grid-2">
         <div class="form-group">
-          <label for="description">
-            Descripción de los hechos <span class="required">*</span>
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            rows="7"
-            placeholder="Redacta de forma detallada lo ocurrido, incluyendo amenazas, uso de armas, antecedentes de violencia, intentos de asfixia, desaparición, etc."
-            required
-          ></textarea>
+          <label>Nombre de la víctima (opcional)</label>
+          <input type="text" name="victim_name">
         </div>
-
-        <div class="form-footer">
-          <p class="note">
-            Esta herramienta es un apoyo técnico para valorar el riesgo. No sustituye la valoración profesional integral.
-          </p>
-          <button type="submit" class="btn-primary">
-            Evaluar riesgo
-          </button>
-        </div>
-      </form>
-
-      <!-- 🔄 Cargando evaluación individual (NATIVO hidden) -->
-      <div id="single-loading" class="loading-row" hidden>
-        <div class="spinner"></div>
-        <span>Evaluando riesgo, por favor espera...</span>
-      </div>
-
-      <p id="form-error" class="error-message" hidden></p>
-    </section>
-
-    <!-- RESULTADO -->
-    <section class="card result-card">
-      <h2>Resultado de la valoración</h2>
-
-      <div id="result-empty">
-        <p class="muted">
-          Aún no se ha evaluado ningún caso. Captura la información y haz clic en
-          <strong>“Evaluar riesgo”</strong>.
-        </p>
-      </div>
-
-      <div id="result-content" class="hidden">
-        <div class="risk-summary">
-          <span class="label">Nivel de riesgo:</span>
-          <span id="risk-level" class="badge badge-moderado">Moderado</span>
-        </div>
-
-        <div class="risk-score">
-          <span class="label">Puntaje total:</span>
-          <span id="risk-score" class="score-value">0</span>
-        </div>
-
-        <div class="risk-factors">
-          <span class="label">Factores identificados:</span>
-          <ul id="risk-factors-list"></ul>
-        </div>
-
-        <div class="recommendations">
-          <h3>Recomendaciones iniciales</h3>
-          <ul id="recommendations-list"></ul>
+        <div class="form-group">
+          <label>Edad (opcional)</label>
+          <input type="number" name="victim_age">
         </div>
       </div>
-    </section>
-  </main>
 
-  <!-- Sección de evaluación masiva desde CSV -->
-  <section class="card card-wide" id="bulk-section">
-    <h2>Evaluación masiva a partir de archivo CSV</h2>
-    <p class="muted">
-      Carga un archivo de casos en formato CSV (por ejemplo, el exportado desde el sistema EUV).
-      El archivo se procesa únicamente en este equipo, sin enviarse a ningún servidor.
-    </p>
+      <div class="form-group">
+        <label>Descripción de los hechos *</label>
+        <textarea name="description" required></textarea>
+      </div>
 
-    <div class="bulk-controls">
-      <input type="file" id="csv-file" accept=".csv" />
-      <button type="button" class="btn-secondary" id="process-csv">
-        Procesar archivo
-      </button>
-      <span id="bulk-file-name" class="muted small"></span>
-      <span id="bulk-status" class="muted small"></span>
-    </div>
+      <button type="submit" class="btn-primary">Evaluar riesgo</button>
+    </form>
 
-    <!-- 🔄 Cargando CSV (NATIVO hidden) -->
-    <div id="bulk-loading" class="loading-row small" hidden>
+    <!-- LOADER INDIVIDUAL -->
+    <div id="single-loading" class="loading-row" hidden>
       <div class="spinner"></div>
-      <span>Procesando archivo, por favor espera...</span>
+      <span>Evaluando riesgo, por favor espera…</span>
     </div>
 
-    <p id="bulk-error" class="error-message" hidden></p>
+    <p id="form-error" class="error-message" hidden></p>
+  </section>
 
-    <div id="bulk-summary" class="bulk-summary hidden">
-      <div class="chip">
-        Total de registros analizados: <strong id="bulk-total">0</strong>
-      </div>
-      <div class="chip chip-moderado">
-        Riesgo moderado: <strong id="bulk-moderado">0</strong>
-      </div>
-      <div class="chip chip-grave">
-        Riesgo grave: <strong id="bulk-grave">0</strong>
-      </div>
-      <div class="chip chip-extremo">
-        Riesgo extremo: <strong id="bulk-extremo">0</strong>
-      </div>
-    </div>
+  <!-- RESULTADO -->
+  <section class="card">
+    <h2>Resultado</h2>
+    <div id="result-empty">Aún no se ha evaluado ningún caso.</div>
 
-    <div class="bulk-table-wrapper hidden" id="bulk-table-wrapper">
-      <table class="bulk-table">
-        <thead>
-          <tr>
-            <th>ID caso</th>
-            <th>Municipio del hecho</th>
-            <th>Edad víctima</th>
-            <th>Nivel de riesgo</th>
-            <th>Puntaje</th>
-          </tr>
-        </thead>
-        <tbody id="bulk-tbody"></tbody>
-      </table>
+    <div id="result-content" class="hidden">
+      <p><strong>Nivel:</strong> <span id="risk-level"></span></p>
+      <p><strong>Puntaje:</strong> <span id="risk-score"></span></p>
+      <ul id="risk-factors-list"></ul>
     </div>
   </section>
 
-  <footer class="app-footer">
-    <small>
-      Prototipo de sistema para valoración de riesgo feminicida. Uso interno para análisis y validación metodológica.
-    </small>
-  </footer>
+</main>
 
-  <!-- Librería para leer CSV en el navegador -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="app.js"></script>
+<!-- CSV -->
+<section class="card card-wide">
+  <h2>Evaluación masiva CSV</h2>
+
+  <input type="file" id="csv-file" accept=".csv">
+  <button id="process-csv" class="btn-secondary">Procesar archivo</button>
+
+  <!-- LOADER CSV -->
+  <div id="bulk-loading" class="loading-row small" hidden>
+    <div class="spinner"></div>
+    <span>Procesando archivo, por favor espera…</span>
+  </div>
+
+  <div id="bulk-summary" class="hidden"></div>
+</section>
+
+<footer class="app-footer">
+  <small>Prototipo de análisis de riesgo feminicida</small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
