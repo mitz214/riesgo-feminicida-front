@@ -417,3 +417,8 @@ textarea {
     transform: rotate(360deg);
   }
 }
+
+.loading-row.hidden {
+  display: none !important;
+}
+
