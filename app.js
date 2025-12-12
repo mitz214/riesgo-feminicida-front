@@ -321,6 +321,19 @@ const bulkGraveEl = document.getElementById("bulk-grave");
 const bulkExtremoEl = document.getElementById("bulk-extremo");
 const bulkLoading = document.getElementById("bulk-loading");
 
+// ✅ Al cargar la página, los loaders deben estar ocultos sí o sí
+document.addEventListener("DOMContentLoaded", () => {
+  if (singleLoading) singleLoading.hidden = true;
+  if (bulkLoading) bulkLoading.hidden = true;
+
+  // (opcional pero recomendado) reset UI masiva
+  if (bulkStatus) bulkStatus.textContent = "";
+  if (bulkFileName) bulkFileName.textContent = "";
+  if (bulkSummary) bulkSummary.classList.add("hidden");
+  if (bulkTableWrapper) bulkTableWrapper.classList.add("hidden");
+});
+
+
 function setBulkLoading(isLoading, message = "") {
   if (processCsvBtn) {
     processCsvBtn.disabled = isLoading;
@@ -480,4 +493,5 @@ function renderBulkTable(cases, totals) {
     bulkTbody.appendChild(tr);
   });
 }
+
 
