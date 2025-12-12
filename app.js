@@ -12,48 +12,17 @@ const USE_MOCK_EVALUATION = true; // por ahora usamos evaluación local
 
 function stripAccents(text) {
   const map = {
-    á: "a",
-    à: "a",
-    ä: "a",
-    â: "a",
-    Á: "a",
-    À: "a",
-    Ä: "a",
-    Â: "a",
-    é: "e",
-    è: "e",
-    ë: "e",
-    ê: "e",
-    É: "e",
-    È: "e",
-    Ë: "e",
-    Ê: "e",
-    í: "i",
-    ì: "i",
-    ï: "i",
-    î: "i",
-    Í: "i",
-    Ì: "i",
-    Ï: "i",
-    Î: "i",
-    ó: "o",
-    ò: "o",
-    ö: "o",
-    ô: "o",
-    Ó: "o",
-    Ò: "o",
-    Ö: "o",
-    Ô: "o",
-    ú: "u",
-    ù: "u",
-    ü: "u",
-    û: "u",
-    Ú: "u",
-    Ù: "u",
-    Ü: "u",
-    Û: "u",
-    ñ: "n",
-    Ñ: "n",
+    á: "a", à: "a", ä: "a", â: "a",
+    Á: "a", À: "a", Ä: "a", Â: "a",
+    é: "e", è: "e", ë: "e", ê: "e",
+    É: "e", È: "e", Ë: "e", Ê: "e",
+    í: "i", ì: "i", ï: "i", î: "i",
+    Í: "i", Ì: "i", Ï: "i", Î: "i",
+    ó: "o", ò: "o", ö: "o", ô: "o",
+    Ó: "o", Ò: "o", Ö: "o", Ô: "o",
+    ú: "u", ù: "u", ü: "u", û: "u",
+    Ú: "u", Ù: "u", Ü: "u", Û: "u",
+    ñ: "n", Ñ: "n",
   };
   return text.replace(/[^\u0000-\u007E]/g, (a) => map[a] || a);
 }
@@ -63,7 +32,6 @@ function evaluateLocally(description) {
   let score = 0;
   const factors = [];
 
-  // 🔎 Diccionario ampliado
   const keywords = {
     arma_fuego: {
       palabras: ["pistola", "arma de fuego", "revolver", "rifle"],
@@ -93,21 +61,10 @@ function evaluateLocally(description) {
     },
     violencia_fisica: {
       palabras: [
-        "la golpeo",
-        "la golpeo varias veces",
-        "la golpea",
-        "golpes",
-        "golpeada",
-        "golpeado",
-        "le pego",
-        "le pego varias veces",
-        "la pateo",
-        "la pateaba",
-        "la empujo",
-        "la empujaba",
-        "la agredio fisicamente",
-        "la lastimo",
-        "la lastimaba",
+        "la golpeo", "la golpeo varias veces", "la golpea", "golpes",
+        "golpeada", "golpeado", "le pego", "le pego varias veces",
+        "la pateo", "la pateaba", "la empujo", "la empujaba",
+        "la agredio fisicamente", "la lastimo", "la lastimaba",
       ],
       puntos: 12,
       etiqueta: "Violencia física directa",
@@ -160,8 +117,7 @@ function evaluateLocally(description) {
     },
   };
 
-  // 🔎 Búsqueda de factores
-  Object.entries(keywords).forEach(([key, cfg]) => {
+  Object.values(keywords).forEach((cfg) => {
     const found = cfg.palabras.some((w) =>
       text.includes(stripAccents(w.toLowerCase()))
     );
@@ -171,21 +127,14 @@ function evaluateLocally(description) {
     }
   });
 
-  // 🎯 Reglas de combinación
   const tieneAmenazaMuerte = factors.includes("Amenazas directas de muerte");
   const tieneViolenciaFisica = factors.includes("Violencia física directa");
   const tieneViolenciaPrevia = factors.includes("Antecedentes de violencia reiterada");
   const tieneAsfixia = factors.includes("Intento de asfixia/estrangulamiento");
 
-  if (tieneAmenazaMuerte && tieneViolenciaFisica) {
-    score += 5;
-  }
-  if (tieneViolenciaFisica && tieneViolenciaPrevia) {
-    score += 4;
-  }
-  if (tieneAmenazaMuerte && tieneViolenciaPrevia) {
-    score += 4;
-  }
+  if (tieneAmenazaMuerte && tieneViolenciaFisica) score += 5;
+  if (tieneViolenciaFisica && tieneViolenciaPrevia) score += 4;
+  if (tieneAmenazaMuerte && tieneViolenciaPrevia) score += 4;
 
   let level = "moderado";
 
@@ -221,17 +170,13 @@ const riskScoreEl = document.getElementById("risk-score");
 const factorsListEl = document.getElementById("risk-factors-list");
 const recommendationsEl = document.getElementById("recommendations-list");
 
-// 🔄 elementos de loading para evaluación individual
 const submitBtn = form.querySelector('button[type="submit"]');
 const singleLoading = document.getElementById("single-loading");
 
 function setSingleLoading(isLoading) {
-  if (!submitBtn || !singleLoading) return;
   submitBtn.disabled = isLoading;
   submitBtn.textContent = isLoading ? "Evaluando..." : "Evaluar riesgo";
-
-  if (isLoading) singleLoading.classList.remove("hidden");
-  else singleLoading.classList.add("hidden");
+  if (singleLoading) singleLoading.hidden = !isLoading; // ✅ NATIVO
 }
 
 form.addEventListener("submit", async (e) => {
@@ -242,9 +187,7 @@ form.addEventListener("submit", async (e) => {
   const formData = new FormData(form);
   const payload = {
     victim_name: formData.get("victim_name") || null,
-    victim_age: formData.get("victim_age")
-      ? Number(formData.get("victim_age"))
-      : null,
+    victim_age: formData.get("victim_age") ? Number(formData.get("victim_age")) : null,
     municipality: formData.get("municipality") || null,
     aggressor_relation: formData.get("aggressor_relation") || null,
     description: (formData.get("description") || "").trim(),
@@ -262,8 +205,7 @@ form.addEventListener("submit", async (e) => {
     let data;
 
     if (USE_MOCK_EVALUATION) {
-      // Evaluación local (sin backend)
-      // Le metemos un pequeño delay para que se vea el "Evaluando..."
+      // pequeño delay para que se alcance a ver el loading
       await new Promise((res) => setTimeout(res, 600));
 
       data = {
@@ -276,7 +218,6 @@ form.addEventListener("submit", async (e) => {
       };
     } else {
       const res = await fetch(API_URL, {
-        // 👈 ya no concatenamos /cases de nuevo
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -295,8 +236,7 @@ form.addEventListener("submit", async (e) => {
     console.error(err);
     errorBox.hidden = false;
     errorBox.textContent =
-      err.message ||
-      "Ocurrió un error al evaluar el caso. Intenta nuevamente.";
+      err.message || "Ocurrió un error al evaluar el caso. Intenta nuevamente.";
   } finally {
     setSingleLoading(false);
   }
@@ -373,15 +313,8 @@ function setBulkLoading(isLoading, message = "") {
     processCsvBtn.disabled = isLoading;
     processCsvBtn.textContent = isLoading ? "Procesando..." : "Procesar archivo";
   }
-
-  if (bulkLoading) {
-    if (isLoading) bulkLoading.classList.remove("hidden");
-    else bulkLoading.classList.add("hidden");
-  }
-
-  if (bulkStatus) {
-    bulkStatus.textContent = message;
-  }
+  if (bulkLoading) bulkLoading.hidden = !isLoading; // ✅ NATIVO
+  if (bulkStatus) bulkStatus.textContent = message;
 }
 
 if (csvInput && processCsvBtn) {
