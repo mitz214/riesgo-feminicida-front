@@ -64,11 +64,21 @@
           ></textarea>
         </div>
 
-        <div id="single-loading" class="loading-row hidden">
-        <div class="spinner"></div>
-        <span>Evaluando riesgo, por favor espera…</span>
-      </div>
+        <div class="form-footer">
+          <p class="note">
+            Esta herramienta es un apoyo técnico para valorar el riesgo. No sustituye la valoración profesional integral.
+          </p>
+          <button type="submit" class="btn-primary">
+            Evaluar riesgo
+          </button>
+        </div>
       </form>
+
+      <!-- 🔄 Cargando evaluación individual (NATIVO hidden) -->
+      <div id="single-loading" class="loading-row" hidden>
+        <div class="spinner"></div>
+        <span>Evaluando riesgo, por favor espera...</span>
+      </div>
 
       <p id="form-error" class="error-message" hidden></p>
     </section>
@@ -102,15 +112,13 @@
 
         <div class="recommendations">
           <h3>Recomendaciones iniciales</h3>
-          <ul id="recommendations-list">
-            <!-- Se llena desde JS según el nivel de riesgo -->
-          </ul>
+          <ul id="recommendations-list"></ul>
         </div>
       </div>
     </section>
   </main>
 
-      <!-- Sección de evaluación masiva desde CSV -->
+  <!-- Sección de evaluación masiva desde CSV -->
   <section class="card card-wide" id="bulk-section">
     <h2>Evaluación masiva a partir de archivo CSV</h2>
     <p class="muted">
@@ -118,7 +126,7 @@
       El archivo se procesa únicamente en este equipo, sin enviarse a ningún servidor.
     </p>
 
-       <div class="bulk-controls">
+    <div class="bulk-controls">
       <input type="file" id="csv-file" accept=".csv" />
       <button type="button" class="btn-secondary" id="process-csv">
         Procesar archivo
@@ -127,13 +135,11 @@
       <span id="bulk-status" class="muted small"></span>
     </div>
 
-    <!-- 🔄 Cargando CSV -->
-    <div id="bulk-loading" class="loading-row small hidden">
+    <!-- 🔄 Cargando CSV (NATIVO hidden) -->
+    <div id="bulk-loading" class="loading-row small" hidden>
       <div class="spinner"></div>
-      <span>Procesando archivo, por favor espera…</span>
+      <span>Procesando archivo, por favor espera...</span>
     </div>
-
-
 
     <p id="bulk-error" class="error-message" hidden></p>
 
@@ -163,15 +169,12 @@
             <th>Puntaje</th>
           </tr>
         </thead>
-        <tbody id="bulk-tbody">
-          <!-- Se llena desde JS -->
-        </tbody>
+        <tbody id="bulk-tbody"></tbody>
       </table>
     </div>
   </section>
 
-
-    <footer class="app-footer">
+  <footer class="app-footer">
     <small>
       Prototipo de sistema para valoración de riesgo feminicida. Uso interno para análisis y validación metodológica.
     </small>
@@ -182,4 +185,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
