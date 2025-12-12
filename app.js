@@ -173,6 +173,19 @@ const recommendationsEl = document.getElementById("recommendations-list");
 const submitBtn = form.querySelector('button[type="submit"]');
 const singleLoading = document.getElementById("single-loading");
 
+// ✅ Al cargar la página, los loaders deben estar ocultos sí o sí
+document.addEventListener("DOMContentLoaded", () => {
+  if (singleLoading) singleLoading.hidden = true;
+  if (bulkLoading) bulkLoading.hidden = true;
+
+  // (opcional pero recomendado) reset UI masiva
+  if (bulkStatus) bulkStatus.textContent = "";
+  if (bulkFileName) bulkFileName.textContent = "";
+  if (bulkSummary) bulkSummary.classList.add("hidden");
+  if (bulkTableWrapper) bulkTableWrapper.classList.add("hidden");
+});
+
+
 function setSingleLoading(isLoading) {
   submitBtn.disabled = isLoading;
   submitBtn.textContent = isLoading ? "Evaluando..." : "Evaluar riesgo";
@@ -467,3 +480,4 @@ function renderBulkTable(cases, totals) {
     bulkTbody.appendChild(tr);
   });
 }
+
