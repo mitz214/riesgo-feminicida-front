@@ -1,56 +1,168 @@
+:root {
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --primary: #7c3aed;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --radius: 14px;
+  --shadow: 0 10px 25px rgba(0,0,0,.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: system-ui, sans-serif;
-  background: #f3f4f6;
   margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
+/* ===== HEADER ===== */
+.app-header {
+  padding: 28px 36px 18px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+.subtitle {
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+/* ===== LAYOUT ===== */
+.layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  padding: 0 36px 36px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== CARD ===== */
 .card {
-  background: #fff;
-  padding: 20px;
-  margin: 20px;
-  border-radius: 12px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 22px 26px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
 
+.card-wide {
+  margin: 0 36px 36px;
+}
+
+/* ===== FORM ===== */
+.form-group {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  font-size: .9rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: .95rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 700px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== BUTTONS ===== */
 .btn-primary {
-  background: #7c3aed;
+  margin-top: 8px;
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
   color: white;
   border: none;
-  padding: 10px 20px;
   border-radius: 999px;
+  padding: 10px 22px;
+  font-size: .95rem;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 8px 18px rgba(124,58,237,.35);
 }
 
 .btn-secondary {
-  padding: 8px 18px;
+  border: 1px solid var(--border);
+  background: #fff;
   border-radius: 999px;
+  padding: 8px 18px;
+  cursor: pointer;
 }
 
-.loading-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  color: #555;
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #ccc;
-  border-top-color: #7c3aed;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ===== RESULT ===== */
+.result-card {
+  align-self: flex-start;
 }
 
 .hidden {
   display: none;
 }
 
-/* 🔥 FIX DEFINITIVO */
+/* ===== LOADING ===== */
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #c7c7c7;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 🔒 FIX DEFINITIVO PARA LOADERS */
 [hidden] {
   display: none !important;
+}
+
+/* ===== FOOTER ===== */
+.app-footer {
+  padding: 14px 36px 18px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: .8rem;
 }
