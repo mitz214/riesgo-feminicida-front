@@ -284,12 +284,6 @@ textarea {
   font-size: 0.85rem;
 }
 
-
-
-
-
-
-
 .btn-secondary {
   border: 1px solid rgba(148, 163, 184, 0.7);
   background: #f9fafb;
@@ -387,7 +381,6 @@ textarea {
   background: rgba(255, 237, 213, 0.7);
 }
 
-
 /* ---- Loading / Cargando ---- */
 
 .loading-row {
@@ -417,8 +410,3 @@ textarea {
     transform: rotate(360deg);
   }
 }
-
-.loading-row.hidden {
-  display: none !important;
-}
-
