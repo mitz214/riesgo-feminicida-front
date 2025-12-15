@@ -25,13 +25,13 @@ function stripAccents(text) {
 function evaluateLocally(description) {
   // Normalización agresiva para recall
   let text = stripAccents(String(description || "").toLowerCase())
-    .replace(/[^\w\s]/g, " ")     // quita puntuación
-    .replace(/\s+/g, " ")        // colapsa espacios
+    .replace(/[^\w\s]/g, " ") // quita puntuación
+    .replace(/\s+/g, " ") // colapsa espacios
     .trim();
 
   let score = 0;
   const factors = [];
-  const reasons = []; // 👈 auditoría: qué disparó
+  const reasons = []; // auditoría opcional
 
   const addFactor = (label, points, reason) => {
     if (!factors.includes(label)) {
@@ -46,72 +46,99 @@ function evaluateLocally(description) {
   // ===============================
 
   // Armas
-  const reArmaFuego = /\b(pistola|revolver|rev[oó]lver|rifle|escopeta|arma\s+de\s+fuego|disparo|balazo|balas)\b/;
-  const reArmaBlanca = /\b(cuchill\w*|navaj\w*|machet\w*|punal\w*|apu[nñ]al\w*|cort\w*|taj\w*)\b/;
+  const reArmaFuego =
+    /\b(pistola|revolver|rev[oó]lver|rifle|escopeta|arma\s+de\s+fuego|disparo|balazo|balas)\b/;
+  const reArmaBlanca =
+    /\b(cuchill\w*|navaj\w*|machet\w*|punal\w*|apu[nñ]al\w*|cort\w*|taj\w*)\b/;
 
   // Asfixia / estrangulamiento (factor crítico)
-  const reAsfixia = /\b(ahorc\w*|estrang\w*|asfix\w*|sofoc\w*|ahog\w*|le\s+apreto\s+el\s+cuello|le\s+apret\w*\s+el\s+cuello|presion\w*\s+el\s+cuello)\b/;
+  const reAsfixia =
+    /\b(ahorc\w*|estrang\w*|asfix\w*|sofoc\w*|ahog\w*|le\s+apret\w*\s+el\s+cuello|presion\w*\s+el\s+cuello)\b/;
 
-  // Violencia física (raíces comunes)
-  const reViolenciaFisica = /\b(golpe\w*|peg\w*|pate\w*|empuj\w*|cachete\w*|pu[nñ]etaz\w*|patad\w*|agredi\w*|lesion\w*|lastim\w*)\b/;
+  // Violencia física
+  const reViolenciaFisica =
+    /\b(golpe\w*|peg\w*|pate\w*|empuj\w*|cachete\w*|pu[nñ]etaz\w*|patad\w*|agredi\w*|lesion\w*|lastim\w*)\b/;
 
-  // Violencia reiterada / previa (indicadores)
-  const reViolenciaPrevia = /\b(no\s+es\s+la\s+primera\s+vez|ya\s+habia\s+pasado|ya\s+la\s+habia|otra\s+vez|otras\s+veces|siempre|reiterad\w*|constant\w*|desde\s+hace\s+tiempo|frecuent\w*|varias\s+veces)\b/;
+  // Violencia reiterada / previa
+  const reViolenciaPrevia =
+    /\b(no\s+es\s+la\s+primera\s+vez|ya\s+habia\s+pasado|ya\s+la\s+habia|otra\s+vez|otras\s+veces|siempre|reiterad\w*|constant\w*|desde\s+hace\s+tiempo|frecuent\w*|varias\s+veces)\b/;
 
-  // Control/celos (raíces)
-  const reControl = /\b(celos\w*|control\w*|vigila\w*|acos\w*|amenaz\w*\s+con\s+quitarl(e|a)\s+el\s+telefono|revis\w*\s+el\s+tel[eé]fono|no\s+la\s+deja\s+salir|no\s+me\s+deja\s+salir|aisla\w*|no\s+le\s+permite\s+trabajar|no\s+me\s+permite\s+trabajar)\b/;
+  // Control / celos
+  const reControl =
+    /\b(celos\w*|control\w*|vigila\w*|acos\w*|revis\w*\s+el\s+tel[eé]fono|no\s+la\s+deja\s+salir|no\s+me\s+deja\s+salir|aisla\w*|no\s+le\s+permite\s+trabajar|no\s+me\s+permite\s+trabajar)\b/;
 
   // Desaparición
-  const reDesaparicion = /\b(desaparec\w*|no\s+regres\w*|no\s+aparec\w*|desconocen\s+su\s+paradero|paradero\s+desconocido)\b/;
+  const reDesaparicion =
+    /\b(desaparec\w*|no\s+regres\w*|no\s+aparec\w*|desconocen\s+su\s+paradero|paradero\s+desconocido)\b/;
 
   // ===============================
   // Amenaza de muerte (RECALL)
   // ===============================
 
-  // Familias raíz
-  const reAmenaza = /\b(amenaz\w*|intimid\w*|advirti\w*|dijo\s+que|me\s+dijo\s+que|le\s+dijo\s+que|advirti[oó]|intento\s+amenazar)\b/;
-  const reMatar = /\b(mat\w+)\b/;          // mata, mataré, matarte, matarla, matanza...
-  const reAsesinar = /\b(asesin\w+)\b/;    // asesinar, asesinato, asesinarla...
-  const reMuerte = /\b(muer\w+)\b/;        // muerte, muerta, muerto...
-  const reQuitarVida = /\b(quitar(le)?\s+la\s+vida|privar(le)?\s+de\s+la\s+vida)\b/;
+  const reAmenaza =
+    /\b(amenaz\w*|intimid\w*|advirti\w*|dijo\s+que|me\s+dijo\s+que|le\s+dijo\s+que|advirti[oó]|intento\s+amenazar)\b/;
 
-  // Amenaza directa muy fuerte (casi siempre)
-  const reAmenazaDirecta = /\b(te|la|lo|me|se|nos|les)\s+(voy|van|va)\s+a\s+(matar|asesinar)\b/;
+  const reMatar = /\b(mat\w+)\b/; // mata, mataré, matarte, matarla...
+  const reAsesinar = /\b(asesin\w+)\b/;
+  const reMuerte = /\b(muer\w+)\b/;
+  const reQuitarVida =
+    /\b(quitar(le)?\s+la\s+vida|privar(le)?\s+de\s+la\s+vida)\b/;
 
-  // Amenaza por co-ocurrencia en ventana (RECALL): si aparece "amenaz*" cerca de "mat*/asesin*/muer*/quitar vida"
+  // Amenaza directa fuerte
+  const reAmenazaDirecta =
+    /\b(te|la|lo|me|se|nos|les)\s+(voy|van|va)\s+a\s+(matar|asesinar)\b/;
+
+  // Amenaza por ventana (amenaz* cerca de mat*/asesin*/muer*/quitar vida)
   const threatByWindow = (() => {
     const idx = text.search(reAmenaza);
     if (idx === -1) return false;
-    const window = text.slice(Math.max(0, idx - 90), idx + 220);
-    return reMatar.test(window) || reAsesinar.test(window) || reMuerte.test(window) || reQuitarVida.test(window);
+    const windowText = text.slice(Math.max(0, idx - 90), idx + 220);
+    return (
+      reMatar.test(windowText) ||
+      reAsesinar.test(windowText) ||
+      reMuerte.test(windowText) ||
+      reQuitarVida.test(windowText)
+    );
   })();
 
   const hayAmenazaMuerte =
     reAmenazaDirecta.test(text) ||
     threatByWindow ||
     reQuitarVida.test(text) ||
-    // Para recall: si aparece "amenaza de muerte" aunque no haya verbo matar
     /\bamenaza(s)?\s+de\s+muerte\b/.test(text);
 
+  // ✅ Detectar repetición (2/3 veces, varias veces, reiterado, constante)
+  const reRepeticion =
+    /\b(2|3|4|5|dos|tres|cuatro|cinco|varias|muchas)\s+veces\b|\breiterad\w*\b|\bconstant\w*\b/;
+  const amenazaReiterada = hayAmenazaMuerte && reRepeticion.test(text);
+
   // ===============================
-  // Aplicación de factores (con puntaje)
+  // Aplicación de factores
   // ===============================
 
   if (reArmaFuego.test(text)) addFactor("Uso de arma de fuego", 15, "match: arma_fuego");
   if (reArmaBlanca.test(text)) addFactor("Uso de arma blanca", 12, "match: arma_blanca");
 
-  if (reAsfixia.test(text)) addFactor("Intento de asfixia/estrangulamiento", 18, "match: asfixia");
+  if (reAsfixia.test(text))
+    addFactor("Intento de asfixia/estrangulamiento", 18, "match: asfixia");
 
-  // Amenaza de muerte es crítica: para recall la marcamos si cualquiera de las reglas dispara
-  if (hayAmenazaMuerte) addFactor("Amenazas directas de muerte", 15, "match: amenaza_muerte");
+  if (hayAmenazaMuerte)
+    addFactor("Amenazas directas de muerte", 15, "match: amenaza_muerte");
 
-  if (reViolenciaFisica.test(text)) addFactor("Violencia física directa", 12, "match: violencia_fisica");
-  if (reViolenciaPrevia.test(text)) addFactor("Antecedentes de violencia reiterada", 12, "match: violencia_previa");
-  if (reDesaparicion.test(text)) addFactor("Referencia a desaparición", 10, "match: desaparicion");
-  if (reControl.test(text)) addFactor("Control y celos extremos", 8, "match: control_celos");
+  if (reViolenciaFisica.test(text))
+    addFactor("Violencia física directa", 12, "match: violencia_fisica");
+
+  if (reViolenciaPrevia.test(text))
+    addFactor("Antecedentes de violencia reiterada", 12, "match: violencia_previa");
+
+  if (reDesaparicion.test(text))
+    addFactor("Referencia a desaparición", 10, "match: desaparicion");
+
+  if (reControl.test(text))
+    addFactor("Control y celos extremos", 8, "match: control_celos");
 
   // ===============================
-  // Combos (suben recall de grave/extremo)
+  // Combos
   // ===============================
   const tieneAmenaza = factors.includes("Amenazas directas de muerte");
   const tieneFisica = factors.includes("Violencia física directa");
@@ -123,17 +150,24 @@ function evaluateLocally(description) {
   if (tieneAmenaza && tienePrevia) score += 4;
 
   // ===============================
-  // Nivel (RECALL: umbrales más bajos + reglas duras)
+  // ✅ Nivel (con regla nueva)
   // ===============================
   let level = "moderado";
 
   // Regla dura: asfixia casi nunca es moderado
   if (tieneAsfixiaFactor) {
     level = score >= 28 ? "extremo" : "grave";
-  } else if (tieneAmenaza && (tieneFisica || tienePrevia)) {
+  }
+  // ✅ NUEVO: amenaza reiterada => mínimo GRAVE
+  else if (amenazaReiterada) {
     level = score >= 28 ? "extremo" : "grave";
-  } else {
-    // Umbrales más sensibles (recall)
+  }
+  // Amenaza + (física o previa) => grave/extremo
+  else if (tieneAmenaza && (tieneFisica || tienePrevia)) {
+    level = score >= 28 ? "extremo" : "grave";
+  }
+  // Umbrales generales (sensibles)
+  else {
     if (score <= 15) level = "moderado";
     else if (score <= 28) level = "grave";
     else level = "extremo";
@@ -142,10 +176,13 @@ function evaluateLocally(description) {
   return {
     risk_score: score,
     risk_level: level,
-    risk_factors: factors.length ? factors : ["Sin factores de alto riesgo identificados en el texto analizado"],
-    // reasons, // 👈 si luego quieres mostrar auditoría en UI, descomenta
+    risk_factors: factors.length
+      ? factors
+      : ["Sin factores de alto riesgo identificados en el texto analizado"],
+    // reasons, // si quieres mostrar auditoría en UI, descomenta
   };
 }
+
 
 
 // ===============================
@@ -231,6 +268,11 @@ if (form) {
 }
 
 function renderResult(caseData) {
+  // ✅ forzar apagar loader al mostrar resultado
+  if (singleLoading) singleLoading.hidden = true;
+
+  resultEmpty.classList.add("hidden");
+  resultContent.classList.remove("hidden");
   if (resultEmpty) resultEmpty.classList.add("hidden");
   if (resultContent) resultContent.classList.remove("hidden");
 
