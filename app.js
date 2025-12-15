@@ -1,131 +1,157 @@
 // ===============================
 // Configuración
 // ===============================
+const API_URL = "http://127.0.0.1:8000/api";
 const USE_MOCK_EVALUATION = true;
 
 // ===============================
-// Helpers texto
+// Utilidades
 // ===============================
 function stripAccents(text) {
   const map = {
-    á:"a", à:"a", ä:"a", â:"a", Á:"a", À:"a", Ä:"a", Â:"a",
-    é:"e", è:"e", ë:"e", ê:"e", É:"e", È:"e", Ë:"e", Ê:"e",
-    í:"i", ì:"i", ï:"i", î:"i", Í:"i", Ì:"i", Ï:"i", Î:"i",
-    ó:"o", ò:"o", ö:"o", ô:"o", Ó:"o", Ò:"o", Ö:"o", Ô:"o",
-    ú:"u", ù:"u", ü:"u", û:"u", Ú:"u", Ù:"u", Ü:"u", Û:"u",
-    ñ:"n", Ñ:"n",
+    á: "a", à: "a", ä: "a", â: "a", Á: "a", À: "a", Ä: "a", Â: "a",
+    é: "e", è: "e", ë: "e", ê: "e", É: "e", È: "e", Ë: "e", Ê: "e",
+    í: "i", ì: "i", ï: "i", î: "i", Í: "i", Ì: "i", Ï: "i", Î: "i",
+    ó: "o", ò: "o", ö: "o", ô: "o", Ó: "o", Ò: "o", Ö: "o", Ô: "o",
+    ú: "u", ù: "u", ü: "u", û: "u", Ú: "u", Ù: "u", Ü: "u", Û: "u",
+    ñ: "n", Ñ: "n",
   };
-  return text.replace(/[^\u0000-\u007E]/g, (a) => map[a] || a);
+  return String(text).replace(/[^\u0000-\u007E]/g, (a) => map[a] || a);
 }
 
 // ===============================
-// Evaluación local
+// Evaluación local (mock)
 // ===============================
 function evaluateLocally(description) {
-  let text = stripAccents(String(description || "").toLowerCase());
+  // Normalización agresiva para recall
+  let text = stripAccents(String(description || "").toLowerCase())
+    .replace(/[^\w\s]/g, " ")     // quita puntuación
+    .replace(/\s+/g, " ")        // colapsa espacios
+    .trim();
+
   let score = 0;
   const factors = [];
+  const reasons = []; // 👈 auditoría: qué disparó
 
-  const keywords = {
-    arma_fuego: {
-      palabras: ["pistola", "arma de fuego", "revolver", "rifle"],
-      puntos: 15,
-      etiqueta: "Uso de arma de fuego",
-    },
-    arma_blanca: {
-      palabras: ["cuchillo", "navaja", "machete", "punalada", "apunalar", "apunialada"],
-      puntos: 12,
-      etiqueta: "Uso de arma blanca",
-    },
-    asfixia: {
-      palabras: ["ahorco", "ahorcar", "estrangulo", "estrangular", "asfixio", "asfixiar"],
-      puntos: 18,
-      etiqueta: "Intento de asfixia/estrangulamiento",
-    },
-    amenaza_muerte: {
-      palabras: [
-        "te voy a matar",
-        "si me dejas te mato",
-        "prefiero verte muerta",
-        "si no eres mia no eres de nadie",
-        "te mato",
-      ],
-      puntos: 15,
-      etiqueta: "Amenazas directas de muerte",
-    },
-    violencia_fisica: {
-      palabras: [
-        "la golpeo","la golpea","golpes","golpeada","le pego",
-        "la pateo","la empujo","la agredio fisicamente","la lastimo",
-      ],
-      puntos: 12,
-      etiqueta: "Violencia física directa",
-    },
-    violencia_previa: {
-      palabras: [
-        "ya la habia golpeado","antes ya la habia golpeado","otras veces la golpeo",
-        "no es la primera vez","siempre la golpea","varias veces la ha golpeado",
-        "desde hace tiempo la agrede","repetidamente la golpea",
-      ],
-      puntos: 12,
-      etiqueta: "Antecedentes de violencia reiterada",
-    },
-    desaparicion: {
-      palabras: ["desaparecida", "desaparecio", "no regreso", "no aparecio"],
-      puntos: 10,
-      etiqueta: "Referencia a desaparición",
-    },
-    control_celos: {
-      palabras: [
-        "no me deja salir","no la deja salir","revisa mi telefono","revisa su telefono",
-        "no me permite trabajar","no le permite trabajar","la controla",
-        "control excesivo","celos","celoso",
-      ],
-      puntos: 8,
-      etiqueta: "Control y celos extremos",
-    },
+  const addFactor = (label, points, reason) => {
+    if (!factors.includes(label)) {
+      factors.push(label);
+      score += points;
+    }
+    if (reason) reasons.push(reason);
   };
 
-  Object.values(keywords).forEach((cfg) => {
-    const found = cfg.palabras.some((w) => text.includes(stripAccents(w)));
-    if (found) {
-      score += cfg.puntos;
-      factors.push(cfg.etiqueta);
-    }
-  });
+  // ===============================
+  // Patrones por raíces (RECALL)
+  // ===============================
 
-  const tieneAmenazaMuerte = factors.includes("Amenazas directas de muerte");
-  const tieneViolenciaFisica = factors.includes("Violencia física directa");
-  const tieneViolenciaPrevia = factors.includes("Antecedentes de violencia reiterada");
-  const tieneAsfixia = factors.includes("Intento de asfixia/estrangulamiento");
+  // Armas
+  const reArmaFuego = /\b(pistola|revolver|rev[oó]lver|rifle|escopeta|arma\s+de\s+fuego|disparo|balazo|balas)\b/;
+  const reArmaBlanca = /\b(cuchill\w*|navaj\w*|machet\w*|punal\w*|apu[nñ]al\w*|cort\w*|taj\w*)\b/;
 
-  if (tieneAmenazaMuerte && tieneViolenciaFisica) score += 5;
-  if (tieneViolenciaFisica && tieneViolenciaPrevia) score += 4;
-  if (tieneAmenazaMuerte && tieneViolenciaPrevia) score += 4;
+  // Asfixia / estrangulamiento (factor crítico)
+  const reAsfixia = /\b(ahorc\w*|estrang\w*|asfix\w*|sofoc\w*|ahog\w*|le\s+apreto\s+el\s+cuello|le\s+apret\w*\s+el\s+cuello|presion\w*\s+el\s+cuello)\b/;
 
+  // Violencia física (raíces comunes)
+  const reViolenciaFisica = /\b(golpe\w*|peg\w*|pate\w*|empuj\w*|cachete\w*|pu[nñ]etaz\w*|patad\w*|agredi\w*|lesion\w*|lastim\w*)\b/;
+
+  // Violencia reiterada / previa (indicadores)
+  const reViolenciaPrevia = /\b(no\s+es\s+la\s+primera\s+vez|ya\s+habia\s+pasado|ya\s+la\s+habia|otra\s+vez|otras\s+veces|siempre|reiterad\w*|constant\w*|desde\s+hace\s+tiempo|frecuent\w*|varias\s+veces)\b/;
+
+  // Control/celos (raíces)
+  const reControl = /\b(celos\w*|control\w*|vigila\w*|acos\w*|amenaz\w*\s+con\s+quitarl(e|a)\s+el\s+telefono|revis\w*\s+el\s+tel[eé]fono|no\s+la\s+deja\s+salir|no\s+me\s+deja\s+salir|aisla\w*|no\s+le\s+permite\s+trabajar|no\s+me\s+permite\s+trabajar)\b/;
+
+  // Desaparición
+  const reDesaparicion = /\b(desaparec\w*|no\s+regres\w*|no\s+aparec\w*|desconocen\s+su\s+paradero|paradero\s+desconocido)\b/;
+
+  // ===============================
+  // Amenaza de muerte (RECALL)
+  // ===============================
+
+  // Familias raíz
+  const reAmenaza = /\b(amenaz\w*|intimid\w*|advirti\w*|dijo\s+que|me\s+dijo\s+que|le\s+dijo\s+que|advirti[oó]|intento\s+amenazar)\b/;
+  const reMatar = /\b(mat\w+)\b/;          // mata, mataré, matarte, matarla, matanza...
+  const reAsesinar = /\b(asesin\w+)\b/;    // asesinar, asesinato, asesinarla...
+  const reMuerte = /\b(muer\w+)\b/;        // muerte, muerta, muerto...
+  const reQuitarVida = /\b(quitar(le)?\s+la\s+vida|privar(le)?\s+de\s+la\s+vida)\b/;
+
+  // Amenaza directa muy fuerte (casi siempre)
+  const reAmenazaDirecta = /\b(te|la|lo|me|se|nos|les)\s+(voy|van|va)\s+a\s+(matar|asesinar)\b/;
+
+  // Amenaza por co-ocurrencia en ventana (RECALL): si aparece "amenaz*" cerca de "mat*/asesin*/muer*/quitar vida"
+  const threatByWindow = (() => {
+    const idx = text.search(reAmenaza);
+    if (idx === -1) return false;
+    const window = text.slice(Math.max(0, idx - 90), idx + 220);
+    return reMatar.test(window) || reAsesinar.test(window) || reMuerte.test(window) || reQuitarVida.test(window);
+  })();
+
+  const hayAmenazaMuerte =
+    reAmenazaDirecta.test(text) ||
+    threatByWindow ||
+    reQuitarVida.test(text) ||
+    // Para recall: si aparece "amenaza de muerte" aunque no haya verbo matar
+    /\bamenaza(s)?\s+de\s+muerte\b/.test(text);
+
+  // ===============================
+  // Aplicación de factores (con puntaje)
+  // ===============================
+
+  if (reArmaFuego.test(text)) addFactor("Uso de arma de fuego", 15, "match: arma_fuego");
+  if (reArmaBlanca.test(text)) addFactor("Uso de arma blanca", 12, "match: arma_blanca");
+
+  if (reAsfixia.test(text)) addFactor("Intento de asfixia/estrangulamiento", 18, "match: asfixia");
+
+  // Amenaza de muerte es crítica: para recall la marcamos si cualquiera de las reglas dispara
+  if (hayAmenazaMuerte) addFactor("Amenazas directas de muerte", 15, "match: amenaza_muerte");
+
+  if (reViolenciaFisica.test(text)) addFactor("Violencia física directa", 12, "match: violencia_fisica");
+  if (reViolenciaPrevia.test(text)) addFactor("Antecedentes de violencia reiterada", 12, "match: violencia_previa");
+  if (reDesaparicion.test(text)) addFactor("Referencia a desaparición", 10, "match: desaparicion");
+  if (reControl.test(text)) addFactor("Control y celos extremos", 8, "match: control_celos");
+
+  // ===============================
+  // Combos (suben recall de grave/extremo)
+  // ===============================
+  const tieneAmenaza = factors.includes("Amenazas directas de muerte");
+  const tieneFisica = factors.includes("Violencia física directa");
+  const tienePrevia = factors.includes("Antecedentes de violencia reiterada");
+  const tieneAsfixiaFactor = factors.includes("Intento de asfixia/estrangulamiento");
+
+  if (tieneAmenaza && tieneFisica) score += 5;
+  if (tieneFisica && tienePrevia) score += 4;
+  if (tieneAmenaza && tienePrevia) score += 4;
+
+  // ===============================
+  // Nivel (RECALL: umbrales más bajos + reglas duras)
+  // ===============================
   let level = "moderado";
-  if (tieneAsfixia) level = score >= 35 ? "extremo" : "grave";
-  else if (tieneAmenazaMuerte && (tieneViolenciaFisica || tieneViolenciaPrevia))
-    level = score >= 35 ? "extremo" : "grave";
-  else {
-    if (score <= 20) level = "moderado";
-    else if (score <= 35) level = "grave";
+
+  // Regla dura: asfixia casi nunca es moderado
+  if (tieneAsfixiaFactor) {
+    level = score >= 28 ? "extremo" : "grave";
+  } else if (tieneAmenaza && (tieneFisica || tienePrevia)) {
+    level = score >= 28 ? "extremo" : "grave";
+  } else {
+    // Umbrales más sensibles (recall)
+    if (score <= 15) level = "moderado";
+    else if (score <= 28) level = "grave";
     else level = "extremo";
   }
 
   return {
     risk_score: score,
     risk_level: level,
-    risk_factors: factors.length ? factors : ["Sin factores de alto riesgo en el texto"],
+    risk_factors: factors.length ? factors : ["Sin factores de alto riesgo identificados en el texto analizado"],
+    // reasons, // 👈 si luego quieres mostrar auditoría en UI, descomenta
   };
 }
+
 
 // ===============================
 // UI - Individual
 // ===============================
 const form = document.getElementById("case-form");
-const submitBtn = form?.querySelector('button[type="submit"]');
-const singleLoading = document.getElementById("single-loading");
 const errorBox = document.getElementById("form-error");
 
 const resultEmpty = document.getElementById("result-empty");
@@ -135,77 +161,68 @@ const riskScoreEl = document.getElementById("risk-score");
 const factorsListEl = document.getElementById("risk-factors-list");
 const recommendationsEl = document.getElementById("recommendations-list");
 
+const singleLoading = document.getElementById("single-loading");
+
 function setSingleLoading(isLoading) {
-  if (submitBtn) {
-    submitBtn.disabled = isLoading;
-    submitBtn.textContent = isLoading ? "Evaluando..." : "Evaluar riesgo";
-  }
-  if (singleLoading) singleLoading.hidden = !isLoading;
+  if (!singleLoading) return;
+  singleLoading.hidden = !isLoading; // true -> visible, false -> hidden
 }
 
 if (form) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (errorBox) { errorBox.hidden = true; errorBox.textContent = ""; }
+    if (errorBox) {
+      errorBox.hidden = true;
+      errorBox.textContent = "";
+    }
 
-    const fd = new FormData(form);
-    const desc = String(fd.get("description") || "").trim();
+    const formData = new FormData(form);
+    const payload = {
+      victim_name: formData.get("victim_name") || null,
+      victim_age: formData.get("victim_age") ? Number(formData.get("victim_age")) : null,
+      municipality: formData.get("municipality") || null,
+      aggressor_relation: formData.get("aggressor_relation") || null,
+      description: (formData.get("description") || "").trim(),
+    };
 
-    if (!desc) {
-      if (errorBox) { errorBox.hidden = false; errorBox.textContent = "La descripción es obligatoria."; }
+    if (!payload.description) {
+      if (errorBox) {
+        errorBox.hidden = false;
+        errorBox.textContent = "La descripción de los hechos es obligatoria.";
+      }
       return;
     }
 
-    setSingleLoading(true);
-
     try {
-      if (USE_MOCK_EVALUATION) await new Promise((r) => setTimeout(r, 400));
-      const evalRes = evaluateLocally(desc);
+      setSingleLoading(true);
 
-      if (resultEmpty) resultEmpty.classList.add("hidden");
-      if (resultContent) resultContent.classList.remove("hidden");
-
-      if (riskLevelEl) riskLevelEl.textContent = evalRes.risk_level.toUpperCase();
-      if (riskScoreEl) riskScoreEl.textContent = String(evalRes.risk_score ?? 0);
-
-      if (factorsListEl) {
-        factorsListEl.innerHTML = "";
-        evalRes.risk_factors.forEach((f) => {
-          const li = document.createElement("li");
-          li.textContent = f;
-          factorsListEl.appendChild(li);
+      let data;
+      if (USE_MOCK_EVALUATION) {
+        data = {
+          message: "Caso evaluado localmente (modo demo)",
+          data: { id: null, ...payload, ...evaluateLocally(payload.description) },
+        };
+      } else {
+        const res = await fetch(`${API_URL}/cases`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Error al evaluar el caso");
+        }
+        data = await res.json();
       }
 
-      // Si tu UI tiene recomendaciones-list, lo llenamos
-      if (recommendationsEl) {
-        recommendationsEl.innerHTML = "";
-        const level = evalRes.risk_level;
-        const recs =
-          level === "extremo" ? [
-            "Activar de inmediato los protocolos de alto riesgo feminicida.",
-            "Gestionar medidas de protección y vigilancia prioritaria.",
-            "Asegurar comunicación urgente con la víctima y/o su red de apoyo.",
-          ] : level === "grave" ? [
-            "Valorar medidas de protección urgentes y canalización inmediata.",
-            "Registrar el caso en sistemas institucionales de riesgo.",
-            "Coordinar con área jurídica y de seguridad según protocolos vigentes.",
-          ] : [
-            "Valorar seguimiento cercano y acompañamiento psicosocial.",
-            "Explorar antecedentes y fortalecer red de apoyo.",
-            "Informar sobre recursos institucionales disponibles.",
-          ];
-        recs.forEach((r) => {
-          const li = document.createElement("li");
-          li.textContent = r;
-          recommendationsEl.appendChild(li);
-        });
-      }
+      renderResult(data.data);
     } catch (err) {
       console.error(err);
       if (errorBox) {
         errorBox.hidden = false;
-        errorBox.textContent = "Ocurrió un error al evaluar el caso.";
+        errorBox.textContent =
+          err.message || "Ocurrió un error al evaluar el caso. Intenta nuevamente.";
       }
     } finally {
       setSingleLoading(false);
@@ -213,16 +230,70 @@ if (form) {
   });
 }
 
+function renderResult(caseData) {
+  if (resultEmpty) resultEmpty.classList.add("hidden");
+  if (resultContent) resultContent.classList.remove("hidden");
+
+  const level = caseData.risk_level || "moderado";
+  if (riskLevelEl) {
+    riskLevelEl.textContent = level.toUpperCase();
+    riskLevelEl.classList.remove("badge-moderado", "badge-grave", "badge-extremo");
+    riskLevelEl.classList.add(`badge-${level}`);
+  }
+
+  if (riskScoreEl) riskScoreEl.textContent = caseData.risk_score ?? 0;
+
+  if (factorsListEl) {
+    factorsListEl.innerHTML = "";
+    (caseData.risk_factors || []).forEach((f) => {
+      const li = document.createElement("li");
+      li.textContent = f;
+      factorsListEl.appendChild(li);
+    });
+  }
+
+  if (recommendationsEl) {
+    recommendationsEl.innerHTML = "";
+    let recs = [];
+
+    if (level === "moderado") {
+      recs = [
+        "Valorar necesidad de seguimiento cercano y acompañamiento psicosocial.",
+        "Explorar antecedentes de violencia y fortalecer red de apoyo.",
+        "Informar sobre recursos institucionales disponibles para protección.",
+      ];
+    } else if (level === "grave") {
+      recs = [
+        "Valorar medidas de protección urgentes y canalización inmediata.",
+        "Registrar el caso en sistemas institucionales de riesgo.",
+        "Coordinar con área jurídica y de seguridad según protocolos vigentes.",
+      ];
+    } else {
+      recs = [
+        "Activar de inmediato los protocolos de alto riesgo feminicida.",
+        "Gestionar medidas de protección y vigilancia prioritaria.",
+        "Asegurar comunicación urgente con la víctima y/o su red de apoyo.",
+      ];
+    }
+
+    recs.forEach((r) => {
+      const li = document.createElement("li");
+      li.textContent = r;
+      recommendationsEl.appendChild(li);
+    });
+  }
+}
+
 // ===============================
-// UI - CSV Masivo
+// UI - Evaluación masiva CSV
 // ===============================
 const csvInput = document.getElementById("csv-file");
 const processCsvBtn = document.getElementById("process-csv");
 const bulkError = document.getElementById("bulk-error");
 const bulkFileName = document.getElementById("bulk-file-name");
 const bulkStatus = document.getElementById("bulk-status");
-const bulkLoading = document.getElementById("bulk-loading");
 
+const bulkLoading = document.getElementById("bulk-loading");
 const bulkSummary = document.getElementById("bulk-summary");
 const bulkTableWrapper = document.getElementById("bulk-table-wrapper");
 const bulkTbody = document.getElementById("bulk-tbody");
@@ -241,43 +312,69 @@ function setBulkLoading(isLoading, message = "") {
   if (bulkStatus) bulkStatus.textContent = message;
 }
 
-function renderBulkTable(cases, totals) {
-  if (!cases.length) {
-    if (bulkSummary) bulkSummary.classList.add("hidden");
-    if (bulkTableWrapper) bulkTableWrapper.classList.add("hidden");
-    if (bulkError) {
-      bulkError.hidden = false;
-      bulkError.textContent = "No se encontraron registros con descripción de hechos para analizar.";
+function resetBulkUI() {
+  if (bulkError) {
+    bulkError.hidden = true;
+    bulkError.textContent = "";
+  }
+  if (bulkStatus) bulkStatus.textContent = "";
+  if (bulkSummary) bulkSummary.classList.add("hidden");
+  if (bulkTableWrapper) bulkTableWrapper.classList.add("hidden");
+  if (bulkTbody) bulkTbody.innerHTML = "";
+}
+
+if (csvInput && processCsvBtn) {
+  csvInput.addEventListener("change", () => {
+    resetBulkUI();
+    if (bulkFileName) {
+      bulkFileName.textContent = csvInput.files[0]
+        ? `Archivo seleccionado: ${csvInput.files[0].name}`
+        : "";
     }
-    return;
-  }
+  });
 
-  if (bulkError) { bulkError.hidden = true; bulkError.textContent = ""; }
+  processCsvBtn.addEventListener("click", () => {
+    resetBulkUI();
 
-  if (bulkSummary) bulkSummary.classList.remove("hidden");
-  if (bulkTableWrapper) bulkTableWrapper.classList.remove("hidden");
+    if (!csvInput.files || !csvInput.files[0]) {
+      if (bulkError) {
+        bulkError.hidden = false;
+        bulkError.textContent = "Primero selecciona un archivo CSV.";
+      }
+      return;
+    }
 
-  if (bulkTotalEl) bulkTotalEl.textContent = String(cases.length);
-  if (bulkModeradoEl) bulkModeradoEl.textContent = String(totals.moderado);
-  if (bulkGraveEl) bulkGraveEl.textContent = String(totals.grave);
-  if (bulkExtremoEl) bulkExtremoEl.textContent = String(totals.extremo);
+    const file = csvInput.files[0];
+    setBulkLoading(true, "Procesando archivo, por favor espera...");
 
-  if (bulkTbody) {
-    bulkTbody.innerHTML = "";
-    cases.forEach((c) => {
-      const tr = document.createElement("tr");
-      tr.classList.add(`risk-${c.risk_level}`);
-
-      tr.innerHTML = `
-        <td>${c.id}</td>
-        <td>${c.municipio || "-"}</td>
-        <td>${c.edad || "-"}</td>
-        <td>${String(c.risk_level).toUpperCase()}</td>
-        <td>${c.risk_score}</td>
-      `;
-      bulkTbody.appendChild(tr);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      encoding: "ISO-8859-1",
+      complete: (results) => {
+        try {
+          handleCsvData(results.data || []);
+          setBulkLoading(false, "Archivo procesado correctamente");
+        } catch (e) {
+          console.error(e);
+          setBulkLoading(false, "");
+          if (bulkError) {
+            bulkError.hidden = false;
+            bulkError.textContent =
+              "Ocurrió un error al procesar el archivo. Verifica que tenga la columna de descripción del hecho.";
+          }
+        }
+      },
+      error: (err) => {
+        console.error(err);
+        setBulkLoading(false, "");
+        if (bulkError) {
+          bulkError.hidden = false;
+          bulkError.textContent = "No se pudo leer el archivo CSV. Verifica el formato.";
+        }
+      },
     });
-  }
+  });
 }
 
 function handleCsvData(rows) {
@@ -286,14 +383,22 @@ function handleCsvData(rows) {
     row.descripcion_hecho ||
     row.descripcion_hecho_extensa ||
     row.descripcion ||
+    row.hechos ||
     "";
 
-  const getId = (row, idx) => row.euv_caso || row.euv || row.id || `Caso ${idx + 1}`;
-  const getMunicipio = (row) => row.hecho_municipio || row.victima_municipio || row.municipio || "";
-  const getEdad = (row) => row.victima_edad || row.edad || row.victima_edad_aprox || "";
+  const getId = (row, idx) =>
+    row.euv_caso || row.euv || row.id || row.ID || `Caso ${idx + 1}`;
+
+  const getMunicipio = (row) =>
+    row.hecho_municipio || row.victima_municipio || row.municipio || "";
+
+  const getEdad = (row) =>
+    row.victima_edad || row.edad || row.victima_edad_aprox || "";
 
   const processed = [];
-  let countModerado = 0, countGrave = 0, countExtremo = 0;
+  let countModerado = 0;
+  let countGrave = 0;
+  let countExtremo = 0;
 
   rows.forEach((row, idx) => {
     const desc = String(getDesc(row) || "").trim();
@@ -322,68 +427,60 @@ function handleCsvData(rows) {
   });
 }
 
-// ✅ reset al cargar
+function renderBulkTable(cases, totals) {
+  if (!bulkSummary || !bulkTableWrapper || !bulkTbody) {
+    throw new Error("Faltan elementos del DOM para la tabla masiva (IDs no coinciden).");
+  }
+
+  if (!cases.length) {
+    bulkSummary.classList.add("hidden");
+    bulkTableWrapper.classList.add("hidden");
+    if (bulkError) {
+      bulkError.hidden = false;
+      bulkError.textContent =
+        "No se encontraron registros con descripción de hechos para analizar.";
+    }
+    return;
+  }
+
+  bulkSummary.classList.remove("hidden");
+  bulkTableWrapper.classList.remove("hidden");
+
+  if (bulkTotalEl) bulkTotalEl.textContent = cases.length;
+  if (bulkModeradoEl) bulkModeradoEl.textContent = totals.moderado;
+  if (bulkGraveEl) bulkGraveEl.textContent = totals.grave;
+  if (bulkExtremoEl) bulkExtremoEl.textContent = totals.extremo;
+
+  bulkTbody.innerHTML = "";
+
+  cases.forEach((c) => {
+    const tr = document.createElement("tr");
+    tr.classList.add(`risk-${c.risk_level}`);
+
+    const tdId = document.createElement("td");
+    tdId.textContent = c.id;
+
+    const tdMun = document.createElement("td");
+    tdMun.textContent = c.municipio || "-";
+
+    const tdEdad = document.createElement("td");
+    tdEdad.textContent = c.edad || "-";
+
+    const tdNivel = document.createElement("td");
+    tdNivel.textContent = String(c.risk_level || "").toUpperCase();
+
+    const tdScore = document.createElement("td");
+    tdScore.textContent = c.risk_score;
+
+    tr.append(tdId, tdMun, tdEdad, tdNivel, tdScore);
+    bulkTbody.appendChild(tr);
+  });
+}
+
+// ===============================
+// ✅ Evitar que loaders aparezcan al cargar la página
+// ===============================
 document.addEventListener("DOMContentLoaded", () => {
   if (singleLoading) singleLoading.hidden = true;
   if (bulkLoading) bulkLoading.hidden = true;
-  if (bulkSummary) bulkSummary.classList.add("hidden");
-  if (bulkTableWrapper) bulkTableWrapper.classList.add("hidden");
-  if (bulkStatus) bulkStatus.textContent = "";
 });
-
-if (csvInput) {
-  csvInput.addEventListener("change", () => {
-    if (bulkError) { bulkError.hidden = true; bulkError.textContent = ""; }
-    if (bulkStatus) bulkStatus.textContent = "";
-    if (bulkFileName) {
-      bulkFileName.textContent = csvInput.files?.[0] ? `Archivo: ${csvInput.files[0].name}` : "";
-    }
-  });
-}
-
-if (processCsvBtn && csvInput) {
-  processCsvBtn.addEventListener("click", () => {
-    if (bulkError) { bulkError.hidden = true; bulkError.textContent = ""; }
-    if (bulkSummary) bulkSummary.classList.add("hidden");
-    if (bulkTableWrapper) bulkTableWrapper.classList.add("hidden");
-
-    if (!csvInput.files || !csvInput.files[0]) {
-      if (bulkError) {
-        bulkError.hidden = false;
-        bulkError.textContent = "Primero selecciona un archivo CSV.";
-      }
-      return;
-    }
-
-    const file = csvInput.files[0];
-    setBulkLoading(true, "Procesando archivo, por favor espera...");
-
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      encoding: "ISO-8859-1",
-      complete: (results) => {
-        try {
-          handleCsvData(results.data || []);
-          setBulkLoading(false, "Procesamiento finalizado.");
-        } catch (e) {
-          console.error(e);
-          setBulkLoading(false, "");
-          if (bulkError) {
-            bulkError.hidden = false;
-            bulkError.textContent =
-              "Error al procesar. Verifica que el CSV tenga columna de descripción del hecho.";
-          }
-        }
-      },
-      error: (err) => {
-        console.error(err);
-        setBulkLoading(false, "");
-        if (bulkError) {
-          bulkError.hidden = false;
-          bulkError.textContent = "No se pudo leer el CSV. Verifica el formato.";
-        }
-      },
-    });
-  });
-}
