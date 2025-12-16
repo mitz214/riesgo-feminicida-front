@@ -25,25 +25,19 @@ function stripAccents(text) {
 function evaluateLocally(description) {
   // Normalización agresiva para recall
   let text = stripAccents(String(description || "").toLowerCase())
-    .replace(/[^\w\s]/g, " ") // quita puntuación
-    .replace(/\s+/g, " ") // colapsa espacios
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 
   let score = 0;
   const factors = [];
-  const reasons = []; // auditoría opcional
 
-  const addFactor = (label, points, reason) => {
+  const addFactor = (label, points) => {
     if (!factors.includes(label)) {
       factors.push(label);
       score += points;
     }
-    if (reason) reasons.push(reason);
   };
-
-  // ===============================
-  // Patrones por raíces (RECALL)
-  // ===============================
 
   // Armas
   const reArmaFuego =
@@ -51,7 +45,7 @@ function evaluateLocally(description) {
   const reArmaBlanca =
     /\b(cuchill\w*|navaj\w*|machet\w*|punal\w*|apu[nñ]al\w*|cort\w*|taj\w*)\b/;
 
-  // Asfixia / estrangulamiento (factor crítico)
+  // Asfixia
   const reAsfixia =
     /\b(ahorc\w*|estrang\w*|asfix\w*|sofoc\w*|ahog\w*|le\s+apret\w*\s+el\s+cuello|presion\w*\s+el\s+cuello)\b/;
 
@@ -59,11 +53,11 @@ function evaluateLocally(description) {
   const reViolenciaFisica =
     /\b(golpe\w*|peg\w*|pate\w*|empuj\w*|cachete\w*|pu[nñ]etaz\w*|patad\w*|agredi\w*|lesion\w*|lastim\w*)\b/;
 
-  // Violencia reiterada / previa
+  // Violencia previa
   const reViolenciaPrevia =
     /\b(no\s+es\s+la\s+primera\s+vez|ya\s+habia\s+pasado|ya\s+la\s+habia|otra\s+vez|otras\s+veces|siempre|reiterad\w*|constant\w*|desde\s+hace\s+tiempo|frecuent\w*|varias\s+veces)\b/;
 
-  // Control / celos
+  // Control/celos
   const reControl =
     /\b(celos\w*|control\w*|vigila\w*|acos\w*|revis\w*\s+el\s+tel[eé]fono|no\s+la\s+deja\s+salir|no\s+me\s+deja\s+salir|aisla\w*|no\s+le\s+permite\s+trabajar|no\s+me\s+permite\s+trabajar)\b/;
 
@@ -71,24 +65,19 @@ function evaluateLocally(description) {
   const reDesaparicion =
     /\b(desaparec\w*|no\s+regres\w*|no\s+aparec\w*|desconocen\s+su\s+paradero|paradero\s+desconocido)\b/;
 
-  // ===============================
-  // Amenaza de muerte (RECALL)
-  // ===============================
-
+  // Amenaza muerte (recall)
   const reAmenaza =
     /\b(amenaz\w*|intimid\w*|advirti\w*|dijo\s+que|me\s+dijo\s+que|le\s+dijo\s+que|advirti[oó]|intento\s+amenazar)\b/;
 
-  const reMatar = /\b(mat\w+)\b/; // mata, mataré, matarte, matarla...
+  const reMatar = /\b(mat\w+)\b/;
   const reAsesinar = /\b(asesin\w+)\b/;
   const reMuerte = /\b(muer\w+)\b/;
   const reQuitarVida =
     /\b(quitar(le)?\s+la\s+vida|privar(le)?\s+de\s+la\s+vida)\b/;
 
-  // Amenaza directa fuerte
   const reAmenazaDirecta =
     /\b(te|la|lo|me|se|nos|les)\s+(voy|van|va)\s+a\s+(matar|asesinar)\b/;
 
-  // Amenaza por ventana (amenaz* cerca de mat*/asesin*/muer*/quitar vida)
   const threatByWindow = (() => {
     const idx = text.search(reAmenaza);
     if (idx === -1) return false;
@@ -107,39 +96,26 @@ function evaluateLocally(description) {
     reQuitarVida.test(text) ||
     /\bamenaza(s)?\s+de\s+muerte\b/.test(text);
 
-  // ✅ Detectar repetición (2/3 veces, varias veces, reiterado, constante)
+  // Repetición: "3 veces", "varias veces", "reiterado", "constante"
   const reRepeticion =
     /\b(2|3|4|5|dos|tres|cuatro|cinco|varias|muchas)\s+veces\b|\breiterad\w*\b|\bconstant\w*\b/;
+
   const amenazaReiterada = hayAmenazaMuerte && reRepeticion.test(text);
 
-  // ===============================
-  // Aplicación de factores
-  // ===============================
+  // Aplicar factores
+  if (reArmaFuego.test(text)) addFactor("Uso de arma de fuego", 15);
+  if (reArmaBlanca.test(text)) addFactor("Uso de arma blanca", 12);
 
-  if (reArmaFuego.test(text)) addFactor("Uso de arma de fuego", 15, "match: arma_fuego");
-  if (reArmaBlanca.test(text)) addFactor("Uso de arma blanca", 12, "match: arma_blanca");
+  if (reAsfixia.test(text)) addFactor("Intento de asfixia/estrangulamiento", 18);
+  if (hayAmenazaMuerte) addFactor("Amenazas directas de muerte", 15);
 
-  if (reAsfixia.test(text))
-    addFactor("Intento de asfixia/estrangulamiento", 18, "match: asfixia");
+  if (reViolenciaFisica.test(text)) addFactor("Violencia física directa", 12);
+  if (reViolenciaPrevia.test(text)) addFactor("Antecedentes de violencia reiterada", 12);
 
-  if (hayAmenazaMuerte)
-    addFactor("Amenazas directas de muerte", 15, "match: amenaza_muerte");
+  if (reDesaparicion.test(text)) addFactor("Referencia a desaparición", 10);
+  if (reControl.test(text)) addFactor("Control y celos extremos", 8);
 
-  if (reViolenciaFisica.test(text))
-    addFactor("Violencia física directa", 12, "match: violencia_fisica");
-
-  if (reViolenciaPrevia.test(text))
-    addFactor("Antecedentes de violencia reiterada", 12, "match: violencia_previa");
-
-  if (reDesaparicion.test(text))
-    addFactor("Referencia a desaparición", 10, "match: desaparicion");
-
-  if (reControl.test(text))
-    addFactor("Control y celos extremos", 8, "match: control_celos");
-
-  // ===============================
   // Combos
-  // ===============================
   const tieneAmenaza = factors.includes("Amenazas directas de muerte");
   const tieneFisica = factors.includes("Violencia física directa");
   const tienePrevia = factors.includes("Antecedentes de violencia reiterada");
@@ -149,25 +125,16 @@ function evaluateLocally(description) {
   if (tieneFisica && tienePrevia) score += 4;
   if (tieneAmenaza && tienePrevia) score += 4;
 
-  // ===============================
-  // ✅ Nivel (con regla nueva)
-  // ===============================
+  // Nivel (con regla de amenaza reiterada)
   let level = "moderado";
 
-  // Regla dura: asfixia casi nunca es moderado
   if (tieneAsfixiaFactor) {
     level = score >= 28 ? "extremo" : "grave";
-  }
-  // ✅ NUEVO: amenaza reiterada => mínimo GRAVE
-  else if (amenazaReiterada) {
+  } else if (amenazaReiterada) {
     level = score >= 28 ? "extremo" : "grave";
-  }
-  // Amenaza + (física o previa) => grave/extremo
-  else if (tieneAmenaza && (tieneFisica || tienePrevia)) {
+  } else if (tieneAmenaza && (tieneFisica || tienePrevia)) {
     level = score >= 28 ? "extremo" : "grave";
-  }
-  // Umbrales generales (sensibles)
-  else {
+  } else {
     if (score <= 15) level = "moderado";
     else if (score <= 28) level = "grave";
     else level = "extremo";
@@ -179,11 +146,8 @@ function evaluateLocally(description) {
     risk_factors: factors.length
       ? factors
       : ["Sin factores de alto riesgo identificados en el texto analizado"],
-    // reasons, // si quieres mostrar auditoría en UI, descomenta
   };
 }
-
-
 
 // ===============================
 // UI - Individual
@@ -202,12 +166,13 @@ const singleLoading = document.getElementById("single-loading");
 
 function setSingleLoading(isLoading) {
   if (!singleLoading) return;
-  singleLoading.hidden = !isLoading; // true -> visible, false -> hidden
+  singleLoading.hidden = !isLoading;
 }
 
 if (form) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
     if (errorBox) {
       errorBox.hidden = true;
       errorBox.textContent = "";
@@ -263,20 +228,19 @@ if (form) {
       }
     } finally {
       setSingleLoading(false);
+      if (singleLoading) singleLoading.hidden = true; // ✅ forzado extra
     }
   });
 }
 
 function renderResult(caseData) {
-  // ✅ forzar apagar loader al mostrar resultado
   if (singleLoading) singleLoading.hidden = true;
 
-  resultEmpty.classList.add("hidden");
-  resultContent.classList.remove("hidden");
   if (resultEmpty) resultEmpty.classList.add("hidden");
   if (resultContent) resultContent.classList.remove("hidden");
 
   const level = caseData.risk_level || "moderado";
+
   if (riskLevelEl) {
     riskLevelEl.textContent = level.toUpperCase();
     riskLevelEl.classList.remove("badge-moderado", "badge-grave", "badge-extremo");
@@ -345,6 +309,11 @@ const bulkModeradoEl = document.getElementById("bulk-moderado");
 const bulkGraveEl = document.getElementById("bulk-grave");
 const bulkExtremoEl = document.getElementById("bulk-extremo");
 
+// ✅ Estado global para filtros
+let bulkAllCases = [];
+let bulkCurrentFilter = "all";
+let bulkTotals = { moderado: 0, grave: 0, extremo: 0 };
+
 function setBulkLoading(isLoading, message = "") {
   if (processCsvBtn) {
     processCsvBtn.disabled = isLoading;
@@ -363,6 +332,27 @@ function resetBulkUI() {
   if (bulkSummary) bulkSummary.classList.add("hidden");
   if (bulkTableWrapper) bulkTableWrapper.classList.add("hidden");
   if (bulkTbody) bulkTbody.innerHTML = "";
+
+  bulkAllCases = [];
+  bulkCurrentFilter = "all";
+
+  // reset active chip
+  document.querySelectorAll("#bulk-summary .chip").forEach((b) => {
+    b.classList.remove("is-active");
+  });
+  const btnAll = document.querySelector('#bulk-summary .chip[data-filter="all"]');
+  if (btnAll) btnAll.classList.add("is-active");
+}
+
+function getFilteredCases(cases, filter) {
+  if (filter === "all") return cases;
+  return cases.filter((c) => c.risk_level === filter);
+}
+
+function setActiveChip(filter) {
+  document.querySelectorAll("#bulk-summary .chip").forEach((b) => {
+    b.classList.toggle("is-active", b.dataset.filter === filter);
+  });
 }
 
 if (csvInput && processCsvBtn) {
@@ -397,9 +387,11 @@ if (csvInput && processCsvBtn) {
         try {
           handleCsvData(results.data || []);
           setBulkLoading(false, "Archivo procesado correctamente");
+          if (bulkLoading) bulkLoading.hidden = true; // ✅ forzado extra
         } catch (e) {
           console.error(e);
           setBulkLoading(false, "");
+          if (bulkLoading) bulkLoading.hidden = true; // ✅ forzado extra
           if (bulkError) {
             bulkError.hidden = false;
             bulkError.textContent =
@@ -410,6 +402,7 @@ if (csvInput && processCsvBtn) {
       error: (err) => {
         console.error(err);
         setBulkLoading(false, "");
+        if (bulkLoading) bulkLoading.hidden = true; // ✅ forzado extra
         if (bulkError) {
           bulkError.hidden = false;
           bulkError.textContent = "No se pudo leer el archivo CSV. Verifica el formato.";
@@ -462,11 +455,10 @@ function handleCsvData(rows) {
     });
   });
 
-  renderBulkTable(processed, {
-    moderado: countModerado,
-    grave: countGrave,
-    extremo: countExtremo,
-  });
+  bulkAllCases = processed;
+  bulkTotals = { moderado: countModerado, grave: countGrave, extremo: countExtremo };
+
+  renderBulkTable(getFilteredCases(bulkAllCases, bulkCurrentFilter), bulkTotals);
 }
 
 function renderBulkTable(cases, totals) {
@@ -488,10 +480,26 @@ function renderBulkTable(cases, totals) {
   bulkSummary.classList.remove("hidden");
   bulkTableWrapper.classList.remove("hidden");
 
-  if (bulkTotalEl) bulkTotalEl.textContent = cases.length;
+  if (bulkTotalEl) bulkTotalEl.textContent = bulkAllCases.length;
   if (bulkModeradoEl) bulkModeradoEl.textContent = totals.moderado;
   if (bulkGraveEl) bulkGraveEl.textContent = totals.grave;
   if (bulkExtremoEl) bulkExtremoEl.textContent = totals.extremo;
+
+  // ✅ conectar filtros una sola vez
+  if (!bulkSummary.dataset.filtersReady) {
+    bulkSummary.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-filter]");
+      if (!btn) return;
+
+      bulkCurrentFilter = btn.dataset.filter || "all";
+      setActiveChip(bulkCurrentFilter);
+
+      const filtered = getFilteredCases(bulkAllCases, bulkCurrentFilter);
+      renderBulkTable(filtered, bulkTotals);
+    });
+
+    bulkSummary.dataset.filtersReady = "1";
+  }
 
   bulkTbody.innerHTML = "";
 
@@ -519,9 +527,7 @@ function renderBulkTable(cases, totals) {
   });
 }
 
-// ===============================
 // ✅ Evitar que loaders aparezcan al cargar la página
-// ===============================
 document.addEventListener("DOMContentLoaded", () => {
   if (singleLoading) singleLoading.hidden = true;
   if (bulkLoading) bulkLoading.hidden = true;

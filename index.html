@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
   <header class="app-header">
     <h1>Sistema de valoración de riesgo feminicida</h1>
@@ -127,9 +128,7 @@
 
     <div class="bulk-controls">
       <input type="file" id="csv-file" accept=".csv" />
-      <button type="button" class="btn-secondary" id="process-csv">
-        Procesar archivo
-      </button>
+      <button type="button" class="btn-secondary" id="process-csv">Procesar archivo</button>
       <span id="bulk-file-name" class="muted small"></span>
       <span id="bulk-status" class="muted small"></span>
     </div>
@@ -142,19 +141,23 @@
 
     <p id="bulk-error" class="error-message" hidden></p>
 
+    <!-- ✅ CHIPS COMO BOTONES FILTRO -->
     <div id="bulk-summary" class="bulk-summary hidden">
-      <div class="chip">
-        Total de registros analizados: <strong id="bulk-total">0</strong>
-      </div>
-      <div class="chip chip-moderado">
+      <button class="chip chip-all is-active" type="button" data-filter="all">
+        Total: <strong id="bulk-total">0</strong>
+      </button>
+
+      <button class="chip chip-moderado" type="button" data-filter="moderado">
         Riesgo moderado: <strong id="bulk-moderado">0</strong>
-      </div>
-      <div class="chip chip-grave">
+      </button>
+
+      <button class="chip chip-grave" type="button" data-filter="grave">
         Riesgo grave: <strong id="bulk-grave">0</strong>
-      </div>
-      <div class="chip chip-extremo">
+      </button>
+
+      <button class="chip chip-extremo" type="button" data-filter="extremo">
         Riesgo extremo: <strong id="bulk-extremo">0</strong>
-      </div>
+      </button>
     </div>
 
     <div class="bulk-table-wrapper hidden" id="bulk-table-wrapper">
