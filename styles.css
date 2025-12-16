@@ -252,3 +252,27 @@ textarea { resize: vertical; }
 }
 
 @keyframes spin { to { transform: rotate(360deg);} }
+
+
+/* ✅ FORZAR que el atributo hidden siempre oculte */
+[hidden] {
+  display: none !important;
+}
+
+/* (extra por si algún selector lo pisa) */
+.loading-row[hidden] {
+  display: none !important;
+}
+
+.chip {
+  cursor: pointer;
+}
+
+.chip.is-active {
+  outline: 2px solid rgba(124, 58, 237, 0.35);
+  box-shadow: 0 8px 16px rgba(124, 58, 237, 0.10);
+}
+
+.chip-all {
+  background: #f9fafb;
+}
