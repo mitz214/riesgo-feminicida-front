@@ -176,6 +176,53 @@
     </div>
   </section>
 
+  <!-- ✅ MODAL DETALLE CSV -->
+  <div id="bulk-modal" class="modal-overlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="bulk-modal-title">
+      <div class="modal-header">
+        <div>
+          <h3 id="bulk-modal-title" class="modal-title">Detalle del caso</h3>
+          <p id="bulk-modal-subtitle" class="modal-subtitle"></p>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="bulk-modal-copy" class="btn-mini">Copiar resumen</button>
+          <button type="button" id="bulk-modal-close" class="modal-close" aria-label="Cerrar">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div class="modal-panel">
+            <h4>Resumen</h4>
+            <div id="bulk-modal-summary" class="kv"></div>
+          </div>
+
+          <div class="modal-panel">
+            <h4>Factores detectados</h4>
+            <ul id="bulk-modal-factors" class="modal-list"></ul>
+          </div>
+        </div>
+
+        <div class="modal-panel">
+          <h4>Descripción del hecho</h4>
+          <pre id="bulk-modal-desc" class="modal-pre"></pre>
+        </div>
+
+        <div class="modal-panel">
+          <h4>Fila completa del CSV</h4>
+          <div class="modal-table-wrap">
+            <table class="modal-table">
+              <tbody id="bulk-modal-csv"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <p id="bulk-copy-status" class="modal-copy-status" hidden>✅ Resumen copiado</p>
+      </div>
+    </div>
+  </div>
+
   <footer class="app-footer">
     <small>
       Prototipo de sistema para valoración de riesgo feminicida. Uso interno para análisis y validación metodológica.

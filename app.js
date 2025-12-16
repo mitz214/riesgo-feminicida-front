@@ -19,11 +19,45 @@ function stripAccents(text) {
   return String(text).replace(/[^\u0000-\u007E]/g, (a) => map[a] || a);
 }
 
+function safeText(v) {
+  if (v === null || v === undefined) return "—";
+  const s = String(v).trim();
+  return s ? s : "—";
+}
+
+/**
+ * ✅ Fix mojibake típico: "MÃ©rida" => "Mérida"
+ * Esto pasa cuando UTF-8 fue interpretado como Latin1.
+ */
+function fixEncoding(value) {
+  if (value === null || value === undefined) return value;
+  const s = String(value);
+
+  // Si no tiene patrones raros, no tocar (evita dañar texto normal)
+  if (!/[ÃÂ�]/.test(s)) return value;
+
+  try {
+    // Re-decoding: bytes latin1 -> utf8
+    return decodeURIComponent(escape(s));
+  } catch {
+    return value;
+  }
+}
+
+function normalizeRow(row) {
+  const out = {};
+  Object.entries(row || {}).forEach(([k, v]) => {
+    const key = fixEncoding(k);
+    const val = typeof v === "string" ? fixEncoding(v) : v;
+    out[key] = val;
+  });
+  return out;
+}
+
 // ===============================
 // Evaluación local (mock)
 // ===============================
 function evaluateLocally(description) {
-  // Normalización agresiva para recall
   let text = stripAccents(String(description || "").toLowerCase())
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
@@ -39,33 +73,26 @@ function evaluateLocally(description) {
     }
   };
 
-  // Armas
   const reArmaFuego =
     /\b(pistola|revolver|rev[oó]lver|rifle|escopeta|arma\s+de\s+fuego|disparo|balazo|balas)\b/;
   const reArmaBlanca =
     /\b(cuchill\w*|navaj\w*|machet\w*|punal\w*|apu[nñ]al\w*|cort\w*|taj\w*)\b/;
 
-  // Asfixia
   const reAsfixia =
     /\b(ahorc\w*|estrang\w*|asfix\w*|sofoc\w*|ahog\w*|le\s+apret\w*\s+el\s+cuello|presion\w*\s+el\s+cuello)\b/;
 
-  // Violencia física
   const reViolenciaFisica =
     /\b(golpe\w*|peg\w*|pate\w*|empuj\w*|cachete\w*|pu[nñ]etaz\w*|patad\w*|agredi\w*|lesion\w*|lastim\w*)\b/;
 
-  // Violencia previa
   const reViolenciaPrevia =
     /\b(no\s+es\s+la\s+primera\s+vez|ya\s+habia\s+pasado|ya\s+la\s+habia|otra\s+vez|otras\s+veces|siempre|reiterad\w*|constant\w*|desde\s+hace\s+tiempo|frecuent\w*|varias\s+veces)\b/;
 
-  // Control/celos
   const reControl =
     /\b(celos\w*|control\w*|vigila\w*|acos\w*|revis\w*\s+el\s+tel[eé]fono|no\s+la\s+deja\s+salir|no\s+me\s+deja\s+salir|aisla\w*|no\s+le\s+permite\s+trabajar|no\s+me\s+permite\s+trabajar)\b/;
 
-  // Desaparición
   const reDesaparicion =
     /\b(desaparec\w*|no\s+regres\w*|no\s+aparec\w*|desconocen\s+su\s+paradero|paradero\s+desconocido)\b/;
 
-  // Amenaza muerte (recall)
   const reAmenaza =
     /\b(amenaz\w*|intimid\w*|advirti\w*|dijo\s+que|me\s+dijo\s+que|le\s+dijo\s+que|advirti[oó]|intento\s+amenazar)\b/;
 
@@ -96,13 +123,11 @@ function evaluateLocally(description) {
     reQuitarVida.test(text) ||
     /\bamenaza(s)?\s+de\s+muerte\b/.test(text);
 
-  // Repetición: "3 veces", "varias veces", "reiterado", "constante"
   const reRepeticion =
     /\b(2|3|4|5|dos|tres|cuatro|cinco|varias|muchas)\s+veces\b|\breiterad\w*\b|\bconstant\w*\b/;
 
   const amenazaReiterada = hayAmenazaMuerte && reRepeticion.test(text);
 
-  // Aplicar factores
   if (reArmaFuego.test(text)) addFactor("Uso de arma de fuego", 15);
   if (reArmaBlanca.test(text)) addFactor("Uso de arma blanca", 12);
 
@@ -115,7 +140,6 @@ function evaluateLocally(description) {
   if (reDesaparicion.test(text)) addFactor("Referencia a desaparición", 10);
   if (reControl.test(text)) addFactor("Control y celos extremos", 8);
 
-  // Combos
   const tieneAmenaza = factors.includes("Amenazas directas de muerte");
   const tieneFisica = factors.includes("Violencia física directa");
   const tienePrevia = factors.includes("Antecedentes de violencia reiterada");
@@ -125,7 +149,6 @@ function evaluateLocally(description) {
   if (tieneFisica && tienePrevia) score += 4;
   if (tieneAmenaza && tienePrevia) score += 4;
 
-  // Nivel (con regla de amenaza reiterada)
   let level = "moderado";
 
   if (tieneAsfixiaFactor) {
@@ -228,7 +251,7 @@ if (form) {
       }
     } finally {
       setSingleLoading(false);
-      if (singleLoading) singleLoading.hidden = true; // ✅ forzado extra
+      if (singleLoading) singleLoading.hidden = true;
     }
   });
 }
@@ -309,6 +332,20 @@ const bulkModeradoEl = document.getElementById("bulk-moderado");
 const bulkGraveEl = document.getElementById("bulk-grave");
 const bulkExtremoEl = document.getElementById("bulk-extremo");
 
+// ✅ MODAL (DETALLE)
+const bulkModal = document.getElementById("bulk-modal");
+const bulkModalClose = document.getElementById("bulk-modal-close");
+const bulkModalCopy = document.getElementById("bulk-modal-copy");
+const bulkCopyStatus = document.getElementById("bulk-copy-status");
+
+const bulkModalSubtitle = document.getElementById("bulk-modal-subtitle");
+const bulkModalSummary = document.getElementById("bulk-modal-summary");
+const bulkModalFactors = document.getElementById("bulk-modal-factors");
+const bulkModalCsv = document.getElementById("bulk-modal-csv");
+const bulkModalDesc = document.getElementById("bulk-modal-desc");
+
+let bulkSelectedCase = null;
+
 // ✅ Estado global para filtros
 let bulkAllCases = [];
 let bulkCurrentFilter = "all";
@@ -336,7 +373,6 @@ function resetBulkUI() {
   bulkAllCases = [];
   bulkCurrentFilter = "all";
 
-  // reset active chip
   document.querySelectorAll("#bulk-summary .chip").forEach((b) => {
     b.classList.remove("is-active");
   });
@@ -352,6 +388,153 @@ function getFilteredCases(cases, filter) {
 function setActiveChip(filter) {
   document.querySelectorAll("#bulk-summary .chip").forEach((b) => {
     b.classList.toggle("is-active", b.dataset.filter === filter);
+  });
+}
+
+// ✅ MODAL helpers
+function buildCopyText(caseObj) {
+  const nivel = String(caseObj.risk_level || "").toUpperCase();
+  const factores = (caseObj.risk_factors || []).map((f) => `- ${f}`).join("\n");
+  const desc = safeText(caseObj.descripcion);
+
+  return `RESUMEN DE CASO (Valoración de riesgo feminicida - Prototipo)
+ID: ${safeText(caseObj.id)}
+Municipio: ${safeText(caseObj.municipio)}
+Edad víctima: ${safeText(caseObj.edad)}
+Nivel de riesgo: ${nivel}
+Puntaje: ${safeText(caseObj.risk_score)}
+
+Factores detectados:
+${factores || "- —"}
+
+Descripción del hecho:
+${desc}
+`;
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // fallback antiguo
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch {
+      document.body.removeChild(ta);
+      return false;
+    }
+  }
+}
+
+function showCopyStatus() {
+  if (!bulkCopyStatus) return;
+  bulkCopyStatus.hidden = false;
+  clearTimeout(showCopyStatus._t);
+  showCopyStatus._t = setTimeout(() => {
+    bulkCopyStatus.hidden = true;
+  }, 1200);
+}
+
+function openBulkModal(caseObj) {
+  if (!bulkModal) return;
+  bulkSelectedCase = caseObj;
+
+  if (bulkCopyStatus) bulkCopyStatus.hidden = true;
+
+  if (bulkModalSubtitle) {
+    bulkModalSubtitle.textContent =
+      `ID: ${safeText(caseObj.id)} · Nivel: ${String(caseObj.risk_level || "").toUpperCase()} · Puntaje: ${safeText(caseObj.risk_score)}`;
+  }
+
+  if (bulkModalSummary) {
+    bulkModalSummary.innerHTML = `
+      <div class="k">Municipio</div><div class="v">${safeText(caseObj.municipio)}</div>
+      <div class="k">Edad</div><div class="v">${safeText(caseObj.edad)}</div>
+      <div class="k">Nivel</div><div class="v">${String(caseObj.risk_level || "").toUpperCase()}</div>
+      <div class="k">Puntaje</div><div class="v">${safeText(caseObj.risk_score)}</div>
+    `;
+  }
+
+  if (bulkModalFactors) {
+    bulkModalFactors.innerHTML = "";
+    const list = Array.isArray(caseObj.risk_factors) ? caseObj.risk_factors : [];
+    (list.length ? list : ["—"]).forEach((f) => {
+      const li = document.createElement("li");
+      li.textContent = safeText(f);
+      bulkModalFactors.appendChild(li);
+    });
+  }
+
+  if (bulkModalDesc) {
+    bulkModalDesc.textContent = safeText(caseObj.descripcion);
+  }
+
+    if (bulkModalCsv) {
+    bulkModalCsv.innerHTML = "";
+
+    const raw = caseObj.raw || {};
+
+    // ✅ Columnas que suelen contener la misma descripción (para no duplicar)
+    const DESC_KEYS = new Set([
+      "hecho_descripcion",
+      "descripcion_hecho",
+      "descripcion_hecho_extensa",
+      "descripcion",
+      "hechos",
+    ]);
+
+    Object.entries(raw).forEach(([k, v]) => {
+      // ✅ si es una columna de descripción, la saltamos (ya se muestra arriba)
+      if (DESC_KEYS.has(String(k).trim())) return;
+
+      const tr = document.createElement("tr");
+
+      const tdK = document.createElement("td");
+      tdK.textContent = k;
+
+      const tdV = document.createElement("td");
+      tdV.textContent = safeText(v);
+
+      tr.append(tdK, tdV);
+      bulkModalCsv.appendChild(tr);
+    });
+  }
+
+  bulkModal.hidden = false;
+}
+
+function closeBulkModal() {
+  if (!bulkModal) return;
+  bulkModal.hidden = true;
+  bulkSelectedCase = null;
+}
+
+if (bulkModal) {
+  bulkModal.addEventListener("click", (e) => {
+    if (e.target === bulkModal) closeBulkModal();
+  });
+}
+if (bulkModalClose) {
+  bulkModalClose.addEventListener("click", closeBulkModal);
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && bulkModal && !bulkModal.hidden) closeBulkModal();
+});
+
+if (bulkModalCopy) {
+  bulkModalCopy.addEventListener("click", async () => {
+    if (!bulkSelectedCase) return;
+    const ok = await copyToClipboard(buildCopyText(bulkSelectedCase));
+    if (ok) showCopyStatus();
   });
 }
 
@@ -385,13 +568,16 @@ if (csvInput && processCsvBtn) {
       encoding: "ISO-8859-1",
       complete: (results) => {
         try {
-          handleCsvData(results.data || []);
+          // ✅ Normalizamos TODAS las filas por si vienen con mojibake
+          const normalizedRows = (results.data || []).map(normalizeRow);
+
+          handleCsvData(normalizedRows);
           setBulkLoading(false, "Archivo procesado correctamente");
-          if (bulkLoading) bulkLoading.hidden = true; // ✅ forzado extra
+          if (bulkLoading) bulkLoading.hidden = true;
         } catch (e) {
           console.error(e);
           setBulkLoading(false, "");
-          if (bulkLoading) bulkLoading.hidden = true; // ✅ forzado extra
+          if (bulkLoading) bulkLoading.hidden = true;
           if (bulkError) {
             bulkError.hidden = false;
             bulkError.textContent =
@@ -402,7 +588,7 @@ if (csvInput && processCsvBtn) {
       error: (err) => {
         console.error(err);
         setBulkLoading(false, "");
-        if (bulkLoading) bulkLoading.hidden = true; // ✅ forzado extra
+        if (bulkLoading) bulkLoading.hidden = true;
         if (bulkError) {
           bulkError.hidden = false;
           bulkError.textContent = "No se pudo leer el archivo CSV. Verifica el formato.";
@@ -447,11 +633,14 @@ function handleCsvData(rows) {
     else countModerado++;
 
     processed.push({
-      id: getId(row, idx),
-      municipio: getMunicipio(row),
-      edad: getEdad(row),
+      id: fixEncoding(getId(row, idx)),
+      municipio: fixEncoding(getMunicipio(row)),
+      edad: fixEncoding(getEdad(row)),
       risk_level: level,
       risk_score: evalRes.risk_score ?? 0,
+      risk_factors: evalRes.risk_factors || [],
+      raw: row,
+      descripcion: fixEncoding(desc),
     });
   });
 
@@ -485,7 +674,6 @@ function renderBulkTable(cases, totals) {
   if (bulkGraveEl) bulkGraveEl.textContent = totals.grave;
   if (bulkExtremoEl) bulkExtremoEl.textContent = totals.extremo;
 
-  // ✅ conectar filtros una sola vez
   if (!bulkSummary.dataset.filtersReady) {
     bulkSummary.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-filter]");
@@ -497,7 +685,6 @@ function renderBulkTable(cases, totals) {
       const filtered = getFilteredCases(bulkAllCases, bulkCurrentFilter);
       renderBulkTable(filtered, bulkTotals);
     });
-
     bulkSummary.dataset.filtersReady = "1";
   }
 
@@ -508,13 +695,18 @@ function renderBulkTable(cases, totals) {
     tr.classList.add(`risk-${c.risk_level}`);
 
     const tdId = document.createElement("td");
-    tdId.textContent = c.id;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "link-btn";
+    btn.textContent = safeText(c.id);
+    btn.addEventListener("click", () => openBulkModal(c));
+    tdId.appendChild(btn);
 
     const tdMun = document.createElement("td");
-    tdMun.textContent = c.municipio || "-";
+    tdMun.textContent = safeText(c.municipio);
 
     const tdEdad = document.createElement("td");
-    tdEdad.textContent = c.edad || "-";
+    tdEdad.textContent = safeText(c.edad);
 
     const tdNivel = document.createElement("td");
     tdNivel.textContent = String(c.risk_level || "").toUpperCase();
